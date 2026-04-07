@@ -111,11 +111,9 @@
     }
 
     .text-container {
-      /* Use max-width instead of fixed width so it shrinks on phones */
       max-width: 800px;
       width: 100%;
       padding: 15px;
-      /* Adds breathing room on phone edges */
       box-sizing: border-box;
       text-align: justify;
       line-height: 1.5;
@@ -123,32 +121,34 @@
 
     .dancing-character {
       float: left;
-
-      /* Make the width a percentage of the screen so it shrinks on mobile */
       width: 40%;
       max-width: 300px;
-      /* Stops it from getting too huge on big screens */
       min-width: 120px;
-      /* Stops it from getting too tiny on small phones */
       height: auto;
-
       shape-outside: url('your-transparent-dancing-character.gif');
       shape-image-threshold: 0.5;
       shape-margin: 15px;
     }
 
-    /* If the screen is smaller than 600px wide (most phones)... */
+    /* --- Footer Styles --- */
+    .author-footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      letter-spacing: 1px;
+      font-family: monospace;
+    }
+
     @media (max-width: 600px) {
       .dancing-character {
-        /* Remove the float and shape effect */
         float: none;
         shape-outside: none;
-
-        /* Center the GIF above the text */
         display: block;
         margin: 0 auto 20px auto;
         width: 200px;
-        /* Give it a nice fixed size for mobile */
       }
     }
   </style>
@@ -181,6 +181,8 @@
 
       <button id="start-btn" disabled>Loading Default Wiki...</button>
     </div>
+
+    <div class="author-footer">Made by Joy Santra (joycodz)</div>
   </div>
 
   <script type="module">
@@ -194,7 +196,7 @@
     const startBtn = document.getElementById("start-btn");
 
     const videoUpload = document.getElementById("video-upload");
-    const audioUpload = document.getElementById("audio-upload"); // NEW: Get audio input
+    const audioUpload = document.getElementById("audio-upload");
     const textInput = document.getElementById("text-input");
 
     let dpr = window.devicePixelRatio || 1;
@@ -222,7 +224,6 @@
     let preparedText = null;
     let fallbackWikiText = "";
 
-    // Load Wikipedia in the background just in case they don't provide custom text
     async function loadWikipediaText() {
       try {
         const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=random&grnnamespace=0&prop=extracts&explaintext=1&exchars=3000";
@@ -253,13 +254,10 @@
 
     loadWikipediaText();
 
-    // Process the inputs when Start is clicked
     startBtn.addEventListener("click", () => {
 
-      // 1. Handle Custom Text vs Wiki Text
       let finalString = textInput.value.trim() !== "" ? textInput.value : fallbackWikiText;
 
-      // If custom text is too short, let's loop it so it fills the screen
       if (textInput.value.trim() !== "") {
         const ogText = finalString;
         while (finalString.length < 5000) {
@@ -267,7 +265,6 @@
         }
       }
 
-      // Extract the Drop Cap
       const match = finalString.match(/[a-zA-Z]/);
       if (match) {
         dropCapChar = finalString.charAt(match.index).toUpperCase();
@@ -275,26 +272,23 @@
         ctx.font = dropCapFont;
         dropCapWidth = ctx.measureText(dropCapChar).width;
       } else {
-        dropCapChar = ""; // Reset if they typed only numbers/symbols
+        dropCapChar = "";
       }
 
       preparedText = prepareWithSegments(finalString, fontStyle);
 
-      // 2. Handle Custom Video
       if (videoUpload.files && videoUpload.files[0]) {
         const file = videoUpload.files[0];
         video.src = URL.createObjectURL(file);
         video.load();
       }
 
-      // 3. NEW: Handle Custom Audio
       if (audioUpload.files && audioUpload.files[0]) {
         const audioFile = audioUpload.files[0];
         audio.src = URL.createObjectURL(audioFile);
         audio.load();
       }
 
-      // 4. Start the Engine
       startScreen.style.display = "none";
       video.currentTime = 0;
 
