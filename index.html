@@ -3,23 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pretext Dynamic Wrap - Mobile Ready</title>
+  <title>Pretext Dynamic Wrap - High-DPI Edition</title>
   <style>
     body {
       background-color: #111;
       color: white;
       margin: 0;
       font-family: sans-serif;
-      overflow: hidden; /* Prevents scrollbars */
+      overflow: hidden; 
     }
     canvas {
       background-color: #222;
-      display: block; /* Removes weird spacing under canvas */
+      display: block; 
     }
-    
-    /* --- THE MOBILE VIDEO FIX --- */
-    /* Never use display: none! Phones will refuse to load the video. 
-       Instead, we make it tiny, invisible, and ignore clicks. */
     video { 
       position: absolute;
       width: 1px;
@@ -28,7 +24,6 @@
       pointer-events: none;
       z-index: -1;
     }
-    
     #start-screen {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -78,18 +73,32 @@
     const startScreen = document.getElementById("start-screen");
     const startBtn = document.getElementById("start-btn");
 
-    // --- NEW: Dynamic Canvas Sizing ---
+    // --- FIX 1: High-DPI Canvas Sizing ---
+    let dpr = window.devicePixelRatio || 1;
+    let logicalWidth = window.innerWidth;
+    let logicalHeight = window.innerHeight;
+
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      dpr = window.devicePixelRatio || 1;
+      logicalWidth = window.innerWidth;
+      logicalHeight = window.innerHeight;
+      
+      // CSS controls the physical size on the screen
+      canvas.style.width = logicalWidth + "px";
+      canvas.style.height = logicalHeight + "px";
+      
+      // The internal canvas resolution is multiplied by the screen's pixel density
+      canvas.width = logicalWidth * dpr;
+      canvas.height = logicalHeight * dpr;
     }
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); // Set size immediately on load
+    resizeCanvas(); 
 
-    const fontStyle = "16px Inter, system-ui, sans-serif";
-    const lineHeight = 26;
+    // We scale our fonts by the DPR so Pretext measures them accurately
+    const fontStyle = `${16 * dpr}px Inter, system-ui, sans-serif`;
+    const dropCapFont = `bold ${76 * dpr}px Georgia, serif`;
+    const lineHeight = 26 * dpr;
     
-    const dropCapFont = "bold 76px Georgia, serif";
     let dropCapChar = "";
     let dropCapWidth = 0;
     let preparedText = null; 
@@ -105,7 +114,13 @@
         let text = pages[pageId].extract;
 
         text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        if (text.length < 4000) text = text.repeat(4);
+        
+        // --- FIX 2: Smart Text Repetition ---
+        // Dynamically append text until we reach a safe threshold (e.g., 5000 characters)
+        const originalText = text;
+        while (text.length < 5000) {
+            text += " " + originalText;
+        }
 
         const match = text.match(/[a-zA-Z]/);
         if (match) {
@@ -132,7 +147,6 @@
       startScreen.style.display = "none";
       video.currentTime = 0; 
       
-      // Mobile browsers heavily restrict `.play()`. Forcing it as a promise ensures it runs safely.
       video.play().then(() => {
         audio.play();
         requestAnimationFrame(renderFrame);
@@ -150,12 +164,12 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // --- NEW: Responsive Margins & Character Size ---
-      const isMobile = canvas.width < 600;
-      const margin = isMobile ? 15 : 40; // Smaller margins on phones
+      // All positional math must now be multiplied by DPR to stay accurate!
+      const isMobile = logicalWidth < 600;
+      const margin = (isMobile ? 15 : 40) * dpr; 
+      const minGap = 30 * dpr; // Minimum width required to draw text
       
-      // The character scales to 70% of the screen height, but caps at 450px max
-      const targetHeight = Math.min(450, canvas.height * 0.7);
+      const targetHeight = Math.min(450 * dpr, canvas.height * 0.7);
       const ratio = video.videoWidth / video.videoHeight;
       const targetWidth = targetHeight * ratio;
       
@@ -180,17 +194,16 @@
         
         let lineStartX = margin; 
         if (currentY <= dropCapBottomY && dropCapChar) {
-            lineStartX = margin + dropCapWidth + 8; 
+            lineStartX = margin + dropCapWidth + (8 * dpr); 
         }
 
-        const yChecks = [currentY - 18, currentY - 9, currentY];
+        const yChecks = [currentY - (18 * dpr), currentY - (9 * dpr), currentY];
         let leftHit = canvas.width; 
         let rightHit = 0; 
         
         for (let y of yChecks) {
           const scanY = Math.floor(y);
           if (scanY > 0) {
-            // Scanner A: Left-to-Right
             for (let x = lineStartX; x < canvas.width - margin; x++) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
               if (imageData[alphaIndex] > 50) { 
@@ -198,8 +211,6 @@
                 break; 
               }
             }
-            
-            // Scanner B: Right-to-Left
             for (let x = canvas.width - margin; x >= lineStartX; x--) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
               if (imageData[alphaIndex] > 50) { 
@@ -212,13 +223,12 @@
         
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.font = fontStyle;
-        // Keep the text-to-character padding small on mobile so words fit!
-        const padding = isMobile ? 12 : 20; 
+        const padding = (isMobile ? 12 : 20) * dpr; 
 
         if (leftHit < canvas.width && rightHit > 0 && leftHit <= rightHit) {
           
           let leftWidth = leftHit - lineStartX - padding;
-          if (leftWidth > 30) { 
+          if (leftWidth > minGap) { 
             const leftLine = layoutNextLine(preparedText, textCursor, leftWidth);
             if (leftLine === null) break; 
             ctx.fillText(leftLine.text, lineStartX, currentY);
@@ -227,7 +237,7 @@
 
           let rightStartX = rightHit + padding;
           let rightWidth = (canvas.width - margin) - rightStartX;
-          if (rightWidth > 30) {
+          if (rightWidth > minGap) {
             const rightLine = layoutNextLine(preparedText, textCursor, rightWidth);
             if (rightLine === null) break;
             ctx.fillText(rightLine.text, rightStartX, currentY);
