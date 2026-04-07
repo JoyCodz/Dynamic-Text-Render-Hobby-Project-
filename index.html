@@ -2,27 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pretext Dynamic Wrap - Wiki Drop Cap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pretext Dynamic Wrap - Mobile Ready</title>
   <style>
     body {
       background-color: #111;
       color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
       font-family: sans-serif;
-      overflow: hidden;
+      overflow: hidden; /* Prevents scrollbars */
     }
     canvas {
       background-color: #222;
-      border: 1px solid #444;
-      border-radius: 8px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      display: block; /* Removes weird spacing under canvas */
     }
-    video { display: none; }
+    
+    /* --- THE MOBILE VIDEO FIX --- */
+    /* Never use display: none! Phones will refuse to load the video. 
+       Instead, we make it tiny, invisible, and ignore clicks. */
+    video { 
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: -1;
+    }
     
     #start-screen {
       position: absolute;
@@ -46,7 +51,6 @@
       transition: transform 0.2s, background-color 0.2s;
     }
     #start-btn:hover:not(:disabled) { transform: scale(1.05); }
-    
     #start-btn:disabled {
       background: #555;
       cursor: not-allowed;
@@ -58,7 +62,7 @@
 
   <audio id="bgm" src="song.mp3" loop></audio>
   <video id="dancer" src="chika_dance.webm" loop autoplay muted playsinline></video>
-  <canvas id="stage" width="800" height="600"></canvas>
+  <canvas id="stage"></canvas>
 
   <div id="start-screen">
     <button id="start-btn" disabled>Loading Wikipedia...</button>
@@ -74,10 +78,17 @@
     const startScreen = document.getElementById("start-screen");
     const startBtn = document.getElementById("start-btn");
 
+    // --- NEW: Dynamic Canvas Sizing ---
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // Set size immediately on load
+
     const fontStyle = "16px Inter, system-ui, sans-serif";
     const lineHeight = 26;
     
-    // --- NEW: Drop Cap Variables ---
     const dropCapFont = "bold 76px Georgia, serif";
     let dropCapChar = "";
     let dropCapWidth = 0;
@@ -96,14 +107,10 @@
         text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         if (text.length < 2000) text = text.repeat(3);
 
-        // --- NEW: Extract the first actual letter for the Drop Cap ---
-        // We use a regex to skip any leading quotation marks or brackets
         const match = text.match(/[a-zA-Z]/);
         if (match) {
           dropCapChar = text.charAt(match.index).toUpperCase();
-          text = text.substring(match.index + 1); // Keep the rest of the text
-          
-          // Measure how wide this specific letter is
+          text = text.substring(match.index + 1); 
           ctx.font = dropCapFont;
           dropCapWidth = ctx.measureText(dropCapChar).width;
         }
@@ -124,8 +131,15 @@
       if (!preparedText) return; 
       startScreen.style.display = "none";
       video.currentTime = 0; 
-      audio.play();
-      requestAnimationFrame(renderFrame);
+      
+      // Mobile browsers heavily restrict `.play()`. Forcing it as a promise ensures it runs safely.
+      video.play().then(() => {
+        audio.play();
+        requestAnimationFrame(renderFrame);
+      }).catch(err => {
+        console.log("Play interrupted, recovering...", err);
+        requestAnimationFrame(renderFrame);
+      });
     });
 
     function renderFrame() {
@@ -136,7 +150,12 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      const targetHeight = 450;
+      // --- NEW: Responsive Margins & Character Size ---
+      const isMobile = canvas.width < 600;
+      const margin = isMobile ? 15 : 40; // Smaller margins on phones
+      
+      // The character scales to 70% of the screen height, but caps at 450px max
+      const targetHeight = Math.min(450, canvas.height * 0.7);
       const ratio = video.videoWidth / video.videoHeight;
       const targetWidth = targetHeight * ratio;
       
@@ -147,25 +166,21 @@
       
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       
-      // --- NEW: Draw the Drop Cap ---
       if (dropCapChar) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.font = dropCapFont;
-        // Draw it so its baseline aligns perfectly with the 3rd line of text
-        ctx.fillText(dropCapChar, 40, 40 + (lineHeight * 2));
+        ctx.fillText(dropCapChar, margin, margin + (lineHeight * 2));
       }
 
-      let currentY = 40; 
+      let currentY = margin; 
       let textCursor = { segmentIndex: 0, graphemeIndex: 0 }; 
-      const dropCapBottomY = 40 + (lineHeight * 2); // Defines how far down the drop cap reaches
+      const dropCapBottomY = margin + (lineHeight * 2); 
 
-      while (currentY < canvas.height - 40) {
+      while (currentY < canvas.height - margin) {
         
-        // --- NEW: Indent logic for the Drop Cap ---
-        let lineStartX = 40; // Default starting X position
-        // If we are on the top 3 lines, push the text right to avoid the big letter
+        let lineStartX = margin; 
         if (currentY <= dropCapBottomY && dropCapChar) {
-            lineStartX = 40 + dropCapWidth + 8; // 8px of padding after the letter
+            lineStartX = margin + dropCapWidth + 8; 
         }
 
         const yChecks = [currentY - 18, currentY - 9, currentY];
@@ -175,8 +190,8 @@
         for (let y of yChecks) {
           const scanY = Math.floor(y);
           if (scanY > 0) {
-            // Scanner A: Starts at our new dynamic lineStartX!
-            for (let x = lineStartX; x < canvas.width - 40; x++) {
+            // Scanner A: Left-to-Right
+            for (let x = lineStartX; x < canvas.width - margin; x++) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
               if (imageData[alphaIndex] > 50) { 
                 if (x < leftHit) leftHit = x; 
@@ -185,7 +200,7 @@
             }
             
             // Scanner B: Right-to-Left
-            for (let x = canvas.width - 40; x >= lineStartX; x--) {
+            for (let x = canvas.width - margin; x >= lineStartX; x--) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
               if (imageData[alphaIndex] > 50) { 
                 if (x > rightHit) rightHit = x; 
@@ -195,14 +210,13 @@
           }
         }
         
-        // Switch back to our normal font before drawing the paragraph text
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.font = fontStyle;
-        const padding = 20;
+        // Keep the text-to-character padding small on mobile so words fit!
+        const padding = isMobile ? 12 : 20; 
 
         if (leftHit < canvas.width && rightHit > 0 && leftHit <= rightHit) {
           
-          // Draw Left Gap
           let leftWidth = leftHit - lineStartX - padding;
           if (leftWidth > 30) { 
             const leftLine = layoutNextLine(preparedText, textCursor, leftWidth);
@@ -211,9 +225,8 @@
             textCursor = leftLine.end;
           }
 
-          // Draw Right Gap
           let rightStartX = rightHit + padding;
-          let rightWidth = (canvas.width - 40) - rightStartX;
+          let rightWidth = (canvas.width - margin) - rightStartX;
           if (rightWidth > 30) {
             const rightLine = layoutNextLine(preparedText, textCursor, rightWidth);
             if (rightLine === null) break;
@@ -222,8 +235,7 @@
           }
           
         } else {
-          // Missed the character
-          let fullWidth = (canvas.width - 40) - lineStartX; 
+          let fullWidth = (canvas.width - margin) - lineStartX; 
           const line = layoutNextLine(preparedText, textCursor, fullWidth);
           if (line === null) break;
           ctx.fillText(line.text, lineStartX, currentY);
