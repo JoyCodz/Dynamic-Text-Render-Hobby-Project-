@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,23 +11,37 @@
       color: white;
       margin: 0;
       font-family: sans-serif;
-      overflow: hidden; 
+      overflow: hidden;
     }
+
     canvas {
       background-color: #222;
-      display: block; 
+      display: block;
     }
-    video { 
-      position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1;
+
+    video {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: -1;
     }
-    
-    /* --- NEW: Interactive Menu Styles --- */
+
+    /* --- Interactive Menu Styles --- */
     #start-screen {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0, 0, 0, 0.85);
-      display: flex; justify-content: center; align-items: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       z-index: 10;
     }
+
     .panel {
       background: #222;
       padding: 30px;
@@ -34,32 +49,111 @@
       text-align: center;
       max-width: 400px;
       width: 90%;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
       border: 1px solid #444;
     }
-    .panel h2 { margin-top: 0; margin-bottom: 20px; }
+
+    .panel h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+
     .input-group {
       margin-bottom: 20px;
       text-align: left;
     }
+
     .input-group label {
-      display: block; margin-bottom: 8px; font-size: 14px; color: #aaa;
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #aaa;
     }
-    input[type="file"], textarea {
-      width: 100%; padding: 10px; background: #111; border: 1px solid #444;
-      color: white; border-radius: 6px; box-sizing: border-box; font-family: sans-serif;
+
+    input[type="file"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      background: #111;
+      border: 1px solid #444;
+      color: white;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-family: sans-serif;
     }
-    textarea { resize: vertical; }
-    
+
+    textarea {
+      resize: vertical;
+    }
+
     #start-btn {
-      padding: 15px 40px; font-size: 20px; font-weight: bold; background: #ff4757;
-      color: white; border: none; border-radius: 50px; cursor: pointer; width: 100%;
-      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); transition: transform 0.2s;
+      padding: 15px 40px;
+      font-size: 20px;
+      font-weight: bold;
+      background: #ff4757;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+      transition: transform 0.2s;
     }
-    #start-btn:hover:not(:disabled) { transform: scale(1.02); }
-    #start-btn:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
+
+    #start-btn:hover:not(:disabled) {
+      transform: scale(1.02);
+    }
+
+    #start-btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .text-container {
+      /* Use max-width instead of fixed width so it shrinks on phones */
+      max-width: 800px;
+      width: 100%;
+      padding: 15px;
+      /* Adds breathing room on phone edges */
+      box-sizing: border-box;
+      text-align: justify;
+      line-height: 1.5;
+    }
+
+    .dancing-character {
+      float: left;
+
+      /* Make the width a percentage of the screen so it shrinks on mobile */
+      width: 40%;
+      max-width: 300px;
+      /* Stops it from getting too huge on big screens */
+      min-width: 120px;
+      /* Stops it from getting too tiny on small phones */
+      height: auto;
+
+      shape-outside: url('your-transparent-dancing-character.gif');
+      shape-image-threshold: 0.5;
+      shape-margin: 15px;
+    }
+
+    /* If the screen is smaller than 600px wide (most phones)... */
+    @media (max-width: 600px) {
+      .dancing-character {
+        /* Remove the float and shape effect */
+        float: none;
+        shape-outside: none;
+
+        /* Center the GIF above the text */
+        display: block;
+        margin: 0 auto 20px auto;
+        width: 200px;
+        /* Give it a nice fixed size for mobile */
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <audio id="bgm" src="song.mp3" loop></audio>
@@ -69,12 +163,17 @@
   <div id="start-screen">
     <div class="panel">
       <h2>Dynamic Wrap Sandbox</h2>
-      
+
       <div class="input-group">
         <label>Custom Video (.webm with alpha) leave empty for default</label>
         <input type="file" id="video-upload" accept="video/webm">
       </div>
-      
+
+      <div class="input-group">
+        <label>Custom Audio (.mp3, .wav) leave empty for default</label>
+        <input type="file" id="audio-upload" accept="audio/*">
+      </div>
+
       <div class="input-group">
         <label>Custom Text (Optional)</label>
         <textarea id="text-input" rows="4" placeholder="Leave empty for random Wikipedia article!"></textarea>
@@ -93,8 +192,9 @@
     const audio = document.getElementById("bgm");
     const startScreen = document.getElementById("start-screen");
     const startBtn = document.getElementById("start-btn");
-    
+
     const videoUpload = document.getElementById("video-upload");
+    const audioUpload = document.getElementById("audio-upload"); // NEW: Get audio input
     const textInput = document.getElementById("text-input");
 
     let dpr = window.devicePixelRatio || 1;
@@ -111,16 +211,16 @@
       canvas.height = logicalHeight * dpr;
     }
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); 
+    resizeCanvas();
 
     const fontStyle = `${16 * dpr}px Inter, system-ui, sans-serif`;
     const dropCapFont = `bold ${76 * dpr}px Georgia, serif`;
     const lineHeight = 26 * dpr;
-    
+
     let dropCapChar = "";
     let dropCapWidth = 0;
-    let preparedText = null; 
-    let fallbackWikiText = ""; 
+    let preparedText = null;
+    let fallbackWikiText = "";
 
     // Load Wikipedia in the background just in case they don't provide custom text
     async function loadWikipediaText() {
@@ -128,16 +228,16 @@
         const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=random&grnnamespace=0&prop=extracts&explaintext=1&exchars=3000";
         const response = await fetch(url);
         const data = await response.json();
-        
+
         const pages = data.query.pages;
         const pageId = Object.keys(pages)[0];
         let text = pages[pageId].extract;
 
         text = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        
+
         const originalText = text;
         while (text.length < 5000) {
-            text += " " + originalText;
+          text += " " + originalText;
         }
 
         fallbackWikiText = text;
@@ -153,12 +253,12 @@
 
     loadWikipediaText();
 
-    // --- NEW: Process the inputs when Start is clicked ---
+    // Process the inputs when Start is clicked
     startBtn.addEventListener("click", () => {
-      
+
       // 1. Handle Custom Text vs Wiki Text
       let finalString = textInput.value.trim() !== "" ? textInput.value : fallbackWikiText;
-      
+
       // If custom text is too short, let's loop it so it fills the screen
       if (textInput.value.trim() !== "") {
         const ogText = finalString;
@@ -171,7 +271,7 @@
       const match = finalString.match(/[a-zA-Z]/);
       if (match) {
         dropCapChar = finalString.charAt(match.index).toUpperCase();
-        finalString = finalString.substring(match.index + 1); 
+        finalString = finalString.substring(match.index + 1);
         ctx.font = dropCapFont;
         dropCapWidth = ctx.measureText(dropCapChar).width;
       } else {
@@ -183,15 +283,21 @@
       // 2. Handle Custom Video
       if (videoUpload.files && videoUpload.files[0]) {
         const file = videoUpload.files[0];
-        // Create a local blob URL for the uploaded video!
         video.src = URL.createObjectURL(file);
-        video.load(); 
+        video.load();
       }
 
-      // 3. Start the Engine
+      // 3. NEW: Handle Custom Audio
+      if (audioUpload.files && audioUpload.files[0]) {
+        const audioFile = audioUpload.files[0];
+        audio.src = URL.createObjectURL(audioFile);
+        audio.load();
+      }
+
+      // 4. Start the Engine
       startScreen.style.display = "none";
-      video.currentTime = 0; 
-      
+      video.currentTime = 0;
+
       video.play().then(() => {
         audio.play();
         requestAnimationFrame(renderFrame);
@@ -208,73 +314,73 @@
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       const isMobile = logicalWidth < 600;
-      const margin = (isMobile ? 15 : 40) * dpr; 
-      const minGap = 30 * dpr; 
-      
+      const margin = (isMobile ? 15 : 40) * dpr;
+      const minGap = 30 * dpr;
+
       const targetHeight = Math.min(450 * dpr, canvas.height * 0.7);
       const ratio = video.videoWidth / video.videoHeight;
       const targetWidth = targetHeight * ratio;
-      
-      const videoX = (canvas.width - targetWidth) / 2; 
-      const videoY = canvas.height - targetHeight; 
-      
-      ctx.drawImage(video, videoX, videoY, targetWidth, targetHeight); 
-      
+
+      const videoX = (canvas.width - targetWidth) / 2;
+      const videoY = canvas.height - targetHeight;
+
+      ctx.drawImage(video, videoX, videoY, targetWidth, targetHeight);
+
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      
+
       if (dropCapChar) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.font = dropCapFont;
         ctx.fillText(dropCapChar, margin, margin + (lineHeight * 2));
       }
 
-      let currentY = margin; 
-      let textCursor = { segmentIndex: 0, graphemeIndex: 0 }; 
-      const dropCapBottomY = margin + (lineHeight * 2); 
+      let currentY = margin;
+      let textCursor = { segmentIndex: 0, graphemeIndex: 0 };
+      const dropCapBottomY = margin + (lineHeight * 2);
 
       while (currentY < canvas.height - margin) {
-        
-        let lineStartX = margin; 
+
+        let lineStartX = margin;
         if (currentY <= dropCapBottomY && dropCapChar) {
-            lineStartX = margin + dropCapWidth + (8 * dpr); 
+          lineStartX = margin + dropCapWidth + (8 * dpr);
         }
 
         const yChecks = [currentY - (18 * dpr), currentY - (9 * dpr), currentY];
-        let leftHit = canvas.width; 
-        let rightHit = 0; 
-        
+        let leftHit = canvas.width;
+        let rightHit = 0;
+
         for (let y of yChecks) {
           const scanY = Math.floor(y);
           if (scanY > 0) {
             for (let x = lineStartX; x < canvas.width - margin; x++) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
-              if (imageData[alphaIndex] > 50) { 
-                if (x < leftHit) leftHit = x; 
-                break; 
+              if (imageData[alphaIndex] > 50) {
+                if (x < leftHit) leftHit = x;
+                break;
               }
             }
             for (let x = canvas.width - margin; x >= lineStartX; x--) {
               const alphaIndex = (scanY * canvas.width + x) * 4 + 3;
-              if (imageData[alphaIndex] > 50) { 
-                if (x > rightHit) rightHit = x; 
-                break; 
+              if (imageData[alphaIndex] > 50) {
+                if (x > rightHit) rightHit = x;
+                break;
               }
             }
           }
         }
-        
+
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.font = fontStyle;
-        const padding = (isMobile ? 12 : 20) * dpr; 
+        const padding = (isMobile ? 12 : 20) * dpr;
 
         if (leftHit < canvas.width && rightHit > 0 && leftHit <= rightHit) {
-          
+
           let leftWidth = leftHit - lineStartX - padding;
-          if (leftWidth > minGap) { 
+          if (leftWidth > minGap) {
             const leftLine = layoutNextLine(preparedText, textCursor, leftWidth);
-            if (leftLine === null) break; 
+            if (leftLine === null) break;
             ctx.fillText(leftLine.text, lineStartX, currentY);
             textCursor = leftLine.end;
           }
@@ -287,15 +393,15 @@
             ctx.fillText(rightLine.text, rightStartX, currentY);
             textCursor = rightLine.end;
           }
-          
+
         } else {
-          let fullWidth = (canvas.width - margin) - lineStartX; 
+          let fullWidth = (canvas.width - margin) - lineStartX;
           const line = layoutNextLine(preparedText, textCursor, fullWidth);
           if (line === null) break;
           ctx.fillText(line.text, lineStartX, currentY);
           textCursor = line.end;
         }
-        
+
         currentY += lineHeight;
       }
 
@@ -303,4 +409,5 @@
     }
   </script>
 </body>
+
 </html>
